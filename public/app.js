@@ -727,15 +727,15 @@ function updateScreenShareButton() {
     const btn = document.getElementById('screenShareBtn');
     if (btn) {
         const icon = btn.querySelector('.btn-icon');
-        const text = btn.querySelector('.btn-text');
+        const label = btn.querySelector('.btn-label');
         
         if (isScreenSharing) {
-            icon.textContent = '⏹️';
-            text.textContent = 'Durdur';
+            if (icon) icon.textContent = '⏹️';
+            if (label) label.textContent = 'stop';
             btn.classList.add('active');
         } else {
-            icon.textContent = '📺';
-            text.textContent = 'Ekran Paylaş';
+            if (icon) icon.textContent = '📺';
+            if (label) label.textContent = 'screen';
             btn.classList.remove('active');
         }
     }
@@ -745,15 +745,15 @@ function updateMicButton() {
     const btn = document.getElementById('micBtn');
     if (btn) {
         const icon = btn.querySelector('.btn-icon');
-        const text = btn.querySelector('.btn-text');
+        const label = btn.querySelector('.btn-label');
         
         if (isMuted) {
-            icon.textContent = '🔇';
-            text.textContent = 'Mikrofon';
+            if (icon) icon.textContent = '🔇';
+            if (label) label.textContent = 'mic';
             btn.classList.remove('active');
         } else {
-            icon.textContent = '🎤';
-            text.textContent = 'Mikrofon';
+            if (icon) icon.textContent = '🎤';
+            if (label) label.textContent = 'mic';
             btn.classList.add('active');
         }
     }
@@ -763,15 +763,15 @@ function updateCameraButton() {
     const btn = document.getElementById('cameraBtn');
     if (btn) {
         const icon = btn.querySelector('.btn-icon');
-        const text = btn.querySelector('.btn-text');
+        const label = btn.querySelector('.btn-label');
         
         if (isVideoOn) {
-            icon.textContent = '📷';
-            text.textContent = 'Kamera';
+            if (icon) icon.textContent = '📷';
+            if (label) label.textContent = 'camera';
             btn.classList.add('active');
         } else {
-            icon.textContent = '📷';
-            text.textContent = 'Kamera';
+            if (icon) icon.textContent = '📷';
+            if (label) label.textContent = 'camera';
             btn.classList.remove('active');
         }
     }
