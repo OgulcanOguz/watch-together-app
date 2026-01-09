@@ -1,194 +1,194 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐱 lofi cats ~ watch together</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <!-- Login Ekranı -->
-        <div class="login-screen" id="loginScreen">
-            <div class="login-box">
-                <div class="lofi-cat-art">
-                    <pre class="cat-ascii">
-  ∧＿∧
- ( ･ω･)
- ┏━∪━━━┓
- ┃  lofi  ┃
- ┃  cats  ┃
- ┗━━━━━┛
-                    </pre>
-                </div>
-                
-                <h1>lofi cats</h1>
-                <p class="tagline">chill ~ watch ~ together ☁️</p>
-                
-                <div class="login-form">
-                    <div class="input-wrap">
-                        <span class="input-label">name</span>
-                        <input type="text" id="usernameInput" placeholder="your name..." maxlength="20">
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🐱 lofi cats ~ watch together</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="container">
+            <!-- Login Ekranı -->
+            <div class="login-screen" id="loginScreen">
+                <div class="login-box">
+                    <div class="lofi-cat-art">
+                        <pre class="cat-ascii">
+    ∧＿∧
+    ( ･ω･)
+    ┏━∪━━━┓
+    ┃  lofi  ┃
+    ┃  cats  ┃
+    ┗━━━━━┛
+                        </pre>
                     </div>
                     
-                    <div class="input-wrap">
-                        <span class="input-label">room code</span>
-                        <input type="text" id="roomIdInput" placeholder="room..." maxlength="30">
+                    <h1>lofi cats</h1>
+                    <p class="tagline">chill ~ watch ~ together ☁️</p>
+                    
+                    <div class="login-form">
+                        <div class="input-wrap">
+                            <span class="input-label">name</span>
+                            <input type="text" id="usernameInput" placeholder="your name..." maxlength="20">
+                        </div>
+                        
+                        <div class="input-wrap">
+                            <span class="input-label">room code</span>
+                            <input type="text" id="roomIdInput" placeholder="room..." maxlength="30">
+                        </div>
+                        
+                        <button onclick="joinRoom()">
+                            <span>join ☁️</span>
+                        </button>
                     </div>
                     
-                    <button onclick="joinRoom()">
-                        <span>join ☁️</span>
-                    </button>
-                </div>
-                
-                <div class="lofi-decoration">
-                    <span>♪</span> <span>～</span> <span>♪</span>
+                    <div class="lofi-decoration">
+                        <span>♪</span> <span>～</span> <span>♪</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Ana Ekran -->
-        <div class="main-screen" id="mainScreen">
-            <!-- Video Bölümü -->
-            <div class="video-section">
-                <!-- Başlık -->
-                <div class="top-bar">
-                    <div class="room-badge">
-                        <span class="cat-icon">🐱</span>
-                        <span id="currentRoom"></span>
-                    </div>
-                    <div class="lofi-time">
-                        <span id="currentTime"></span>
-                    </div>
-                </div>
-
-                <!-- Kontroller -->
-                <div class="controls">
-                    <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-btn">
-                        <span class="btn-icon">📺</span>
-                        <span class="btn-label">screen</span>
-                    </button>
-                    <button id="micBtn" onclick="toggleMicrophone()" class="control-btn">
-                        <span class="btn-icon">🎤</span>
-                        <span class="btn-label">mic</span>
-                    </button>
-                    <button id="cameraBtn" onclick="toggleCamera()" class="control-btn">
-                        <span class="btn-icon">📷</span>
-                        <span class="btn-label">camera</span>
-                    </button>
-                    <button onclick="requestSync()" class="control-btn sync-btn">
-                        <span class="btn-icon">⏱️</span>
-                        <span class="btn-label">3-2-1</span>
-                    </button>
-                </div>
-
-                <!-- Mikrofon Gain -->
-                <div class="gain-control">
-                    <span class="gain-icon">🎚️</span>
-                    <span class="gain-label">mic level</span>
-                    <div class="gain-slider-wrap">
-                        <input type="range" id="micGainSlider" min="0" max="100" value="100" onchange="changeMicGain(this.value)">
-                        <span id="micGainValue" class="gain-value">100%</span>
-                    </div>
-                </div>
-
-                <!-- Remote Video (Ana Alan) -->
-                <div id="remoteVideoContainer" class="remote-screen" style="display: none;">
-                    <div class="live-badge">
-                        <span class="pulse-dot"></span>
-                        <span>live ☁️</span>
-                    </div>
-                    <video id="remoteVideo" autoplay playsinline></video>
-                    <audio id="remoteAudio" autoplay></audio>
-                    
-                    <!-- Video Controls -->
-                    <div class="video-controls">
-                        <button onclick="toggleFullscreen()" class="vc-btn">
-                            <span>⛶</span>
-                        </button>
-                        <div class="volume-wrap">
-                            <span>🔊</span>
-                            <input type="range" min="0" max="100" value="100" onchange="changeVolume(this.value)">
-                            <span id="volumeValue">100</span>
+            <!-- Ana Ekran -->
+            <div class="main-screen" id="mainScreen">
+                <!-- Video Bölümü -->
+                <div class="video-section">
+                    <!-- Başlık -->
+                    <div class="top-bar">
+                        <div class="room-badge">
+                            <span class="cat-icon">🐱</span>
+                            <span id="currentRoom"></span>
+                        </div>
+                        <div class="lofi-time">
+                            <span id="currentTime"></span>
                         </div>
                     </div>
-                </div>
 
-                <!-- Video Player -->
-                <div id="videoPlayerSection" class="player-area">
-                    <div class="video-input-bar">
-                        <input type="text" id="videoUrlInput" placeholder="paste video url... (youtube, vimeo, mp4) ☁️">
-                        <button onclick="loadVideo()">▶</button>
+                    <!-- Kontroller -->
+                    <div class="controls">
+                        <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-btn">
+                            <span class="btn-icon">📺</span>
+                            <span class="btn-label">screen</span>
+                        </button>
+                        <button id="micBtn" onclick="toggleMicrophone()" class="control-btn">
+                            <span class="btn-icon">🎤</span>
+                            <span class="btn-label">mic</span>
+                        </button>
+                        <button id="cameraBtn" onclick="toggleCamera()" class="control-btn">
+                            <span class="btn-icon">📷</span>
+                            <span class="btn-label">camera</span>
+                        </button>
+                        <button onclick="requestSync()" class="control-btn sync-btn">
+                            <span class="btn-icon">⏱️</span>
+                            <span class="btn-label">3-2-1</span>
+                        </button>
                     </div>
 
-                    <div class="video-player">
-                        <div class="video-placeholder" id="placeholder">
-                            <div class="placeholder-art">
-                                <pre class="cat-watching">
-    ∧＿∧
-   ( ･ω･) ♪
-  ⊂　　 つ
-   (つ ノ
-    (ノ
-                                </pre>
-                                <p>paste a video or share your screen ☁️</p>
-                                <div class="note-decoration">
-                                    <span>♪</span> <span>～</span> <span>♪</span>
-                                </div>
+                    <!-- Mikrofon Gain -->
+                    <div class="gain-control">
+                        <span class="gain-icon">🎚️</span>
+                        <span class="gain-label">mic level</span>
+                        <div class="gain-slider-wrap">
+                            <input type="range" id="micGainSlider" min="0" max="100" value="100" onchange="changeMicGain(this.value)">
+                            <span id="micGainValue" class="gain-value">100%</span>
+                        </div>
+                    </div>
+
+                    <!-- Remote Video (Ana Alan) -->
+                    <div id="remoteVideoContainer" class="remote-screen" style="display: none;">
+                        <div class="live-badge">
+                            <span class="pulse-dot"></span>
+                            <span>live ☁️</span>
+                        </div>
+                        <video id="remoteVideo" autoplay playsinline></video>
+                        <audio id="remoteAudio" autoplay></audio>
+                        
+                        <!-- Video Controls -->
+                        <div class="video-controls">
+                            <button onclick="toggleFullscreen()" class="vc-btn">
+                                <span>⛶</span>
+                            </button>
+                            <div class="volume-wrap">
+                                <span>🔊</span>
+                                <input type="range" min="0" max="100" value="100" onchange="changeVolume(this.value)">
+                                <span id="volumeValue">100</span>
                             </div>
                         </div>
-                        <video id="videoPlayer" controls style="display: none;"></video>
                     </div>
-                </div>
 
-                <!-- Kamera Preview -->
-                <video id="localCameraPreview" class="camera-preview" autoplay muted playsinline style="display: none;"></video>
-            </div>
+                    <!-- Video Player -->
+                    <div id="videoPlayerSection" class="player-area">
+                        <div class="video-input-bar">
+                            <input type="text" id="videoUrlInput" placeholder="paste video url... (youtube, vimeo, mp4) ☁️">
+                            <button onclick="loadVideo()">▶</button>
+                        </div>
 
-            <!-- Chat -->
-            <div class="chat-section">
-                <div class="chat-header">
-                    <h3>~ chat ~</h3>
-                    <div class="user-count" id="usersList">
-                        <span>🐱</span> <span>0</span>
+                        <div class="video-player">
+                            <div class="video-placeholder" id="placeholder">
+                                <div class="placeholder-art">
+                                    <pre class="cat-watching">
+        ∧＿∧
+    ( ･ω･) ♪
+    ⊂　　 つ
+    (つ ノ
+        (ノ
+                                    </pre>
+                                    <p>paste a video or share your screen ☁️</p>
+                                    <div class="note-decoration">
+                                        <span>♪</span> <span>～</span> <span>♪</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <video id="videoPlayer" controls style="display: none;"></video>
+                        </div>
                     </div>
+
+                    <!-- Kamera Preview -->
+                    <video id="localCameraPreview" class="camera-preview" autoplay muted playsinline style="display: none;"></video>
                 </div>
 
-                <div class="chat-messages" id="chatMessages">
-                    <div class="message system">
-                        welcome to lofi cats ☁️
+                <!-- Chat -->
+                <div class="chat-section">
+                    <div class="chat-header">
+                        <h3>~ chat ~</h3>
+                        <div class="user-count" id="usersList">
+                            <span>🐱</span> <span>0</span>
+                        </div>
                     </div>
-                </div>
 
-                <div class="chat-input-bar">
-                    <input type="text" id="messageInput" placeholder="say something chill..." onkeypress="handleMessageKeypress(event)">
-                    <button onclick="sendMessage()">→</button>
-                </div>
-                
-                <div class="chat-decoration">
-                    <span class="float-note">♪</span>
-                    <span class="float-note">～</span>
-                    <span class="float-note">♪</span>
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message system">
+                            welcome to lofi cats ☁️
+                        </div>
+                    </div>
+
+                    <div class="chat-input-bar">
+                        <input type="text" id="messageInput" placeholder="say something chill..." onkeypress="handleMessageKeypress(event)">
+                        <button onclick="sendMessage()">→</button>
+                    </div>
+                    
+                    <div class="chat-decoration">
+                        <span class="float-note">♪</span>
+                        <span class="float-note">～</span>
+                        <span class="float-note">♪</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js"></script>
-    <script>
-        // Saat gösterimi
-        function updateTime() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const timeEl = document.getElementById('currentTime');
-            if (timeEl) {
-                timeEl.textContent = `${hours}:${minutes}`;
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="app.js"></script>
+        <script>
+            // Saat gösterimi
+            function updateTime() {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const timeEl = document.getElementById('currentTime');
+                if (timeEl) {
+                    timeEl.textContent = `${hours}:${minutes}`;
+                }
             }
-        }
-        setInterval(updateTime, 1000);
-        updateTime();
-    </script>
-</body>
-</html>
+            setInterval(updateTime, 1000);
+            updateTime();
+        </script>
+    </body>
+    </html>
