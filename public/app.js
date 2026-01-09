@@ -15,7 +15,9 @@ let screenStream = null;
 let isScreenSharing = false;
 let isMuted = true;
 let isVideoOn = false;
-let availableDevices = { audioInputs: [], audioOutputs: [] };
+let audioContext = null;
+let analyser = null;
+let microphone = null;
 
 // ICE sunucuları
 const iceServers = {
@@ -64,7 +66,7 @@ async function joinRoom() {
     setupSocketListeners();
     setupVideoPlayer();
     await setupWebRTC();
-    await loadAudioDevices();
+    setupAudioVisualizer();
 }
 
 function setupSocketListeners() {
@@ -192,24 +194,62 @@ async function setupWebRTC() {
         
         isMuted = true;
         updateMicButton();
-        addSystemMessage('🎤 Mikrofon hazır (kapalı)');
+        addSystemMessage('🎤 Mikrofon hazır');
     } catch (err) {
         console.error('❌ Mikrofon erişim hatası:', err);
         addSystemMessage('⚠️ Mikrofon erişimi reddedildi');
     }
 }
 
-async function loadAudioDevices() {
+function setupAudioVisualizer() {
+    if (!localStream) return;
+    
     try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        availableDevices.audioInputs = devices.filter(d => d.kind === 'audioinput');
-        availableDevices.audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        microphone = audioContext.createMediaStreamSource(localStream);
+        analyser.fftSize = 256;
+        microphone.connect(analyser);
         
-        console.log('🎤 Bulunan mikrofonlar:', availableDevices.audioInputs.length);
-        console.log('🔊 Bulunan hoparlörler:', availableDevices.audioOutputs.length);
+        visualizeAudio();
     } catch (err) {
-        console.error('Cihaz listesi alınamadı:', err);
+        console.error('Ses visualizer hatası:', err);
     }
+}
+
+function visualizeAudio() {
+    const canvas = document.getElementById('audioVisualizer');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    function draw() {
+        requestAnimationFrame(draw);
+        
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Ortalama ses seviyesi
+        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+        const normalizedVolume = average / 255;
+        
+        // Canvas temizle
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        if (!isMuted && normalizedVolume > 0.01) {
+            // Ses barı çiz
+            const barWidth = canvas.width * normalizedVolume;
+            const gradient = ctx.createLinearGradient(0, 0, barWidth, 0);
+            gradient.addColorStop(0, '#10b981');
+            gradient.addColorStop(1, '#3b82f6');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, barWidth, canvas.height);
+        }
+    }
+    
+    draw();
 }
 
 async function createOffer() {
@@ -234,9 +274,9 @@ async function createOffer() {
         
         socket.emit('webrtc-offer', { roomId: currentRoom, offer });
         console.log('✅ Offer gönderildi');
-        addSystemMessage('📡 Bağlantı kuruluyor...');
+        addSystemMessage('📡 Bağlanıyor...');
     } catch (err) {
-        console.error('❌ Offer oluşturma hatası:', err);
+        console.error('❌ Offer hatası:', err);
         addSystemMessage('❌ Bağlantı hatası');
     }
 }
@@ -269,10 +309,10 @@ async function handleOffer(offer) {
 async function handleAnswer(answer) {
     try {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        console.log('✅ Bağlantı tamamlandı!');
-        addSystemMessage('✅ Ses bağlantısı kuruldu!');
+        console.log('✅ Bağlantı kuruldu!');
+        addSystemMessage('✅ Bağlantı aktif');
     } catch (err) {
-        console.error('❌ Answer işleme hatası:', err);
+        console.error('❌ Answer hatası:', err);
     }
 }
 
@@ -309,37 +349,35 @@ function setupPeerConnectionListeners() {
         if (event.track.kind === 'audio') {
             const remoteAudio = document.getElementById('remoteAudio');
             remoteAudio.srcObject = remoteStream;
+            remoteAudio.play().catch(e => console.log('Autoplay engellendi:', e));
             console.log('✅ Uzak ses bağlandı');
-            addSystemMessage('🔊 Karşı tarafın sesi aktif');
+            addSystemMessage('🔊 Ses aktif');
         } else if (event.track.kind === 'video') {
             const remoteVideo = document.getElementById('remoteVideo');
             remoteVideo.srcObject = remoteStream;
-            document.getElementById('remoteVideoContainer').style.display = 'block';
+            remoteVideo.play().catch(e => console.log('Autoplay engellendi:', e));
+            document.getElementById('remoteVideoContainer').style.display = 'flex';
             
             // Video yüklendiğinde video player'ı gizle
             document.getElementById('videoPlayerSection').style.display = 'none';
             
-            console.log('✅ Uzak ekran paylaşımı bağlandı');
-            addSystemMessage('📺 Ekran paylaşımı başladı');
+            console.log('✅ Uzak video bağlandı');
+            addSystemMessage('📺 Ekran paylaşımı aktif');
         }
     };
 
     peerConnection.onconnectionstatechange = () => {
         const state = peerConnection.connectionState;
-        console.log('🔄 Bağlantı durumu:', state);
+        console.log('🔄 Bağlantı:', state);
         
         if (state === 'connected') {
-            addSystemMessage('✅ WebRTC bağlantısı aktif');
+            addSystemMessage('✅ WebRTC bağlandı');
         } else if (state === 'disconnected') {
             addSystemMessage('⚠️ Bağlantı koptu');
         } else if (state === 'failed') {
             addSystemMessage('❌ Bağlantı başarısız');
             closeWebRTCConnection();
         }
-    };
-
-    peerConnection.oniceconnectionstatechange = () => {
-        console.log('🧊 ICE durumu:', peerConnection.iceConnectionState);
     };
 }
 
@@ -358,7 +396,7 @@ async function startScreenShare() {
                 cursor: "always",
                 displaySurface: "monitor"
             },
-            audio: true // Sistem sesini de paylaş
+            audio: true
         });
 
         console.log('✅ Ekran paylaşımı başladı');
@@ -366,10 +404,13 @@ async function startScreenShare() {
         // Ekran akışını peer connection'a ekle
         if (peerConnection) {
             const videoTrack = screenStream.getVideoTracks()[0];
-            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
             
-            if (sender) {
-                await sender.replaceTrack(videoTrack);
+            // Mevcut video sender'ı bul ve değiştir
+            const senders = peerConnection.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            
+            if (videoSender) {
+                await videoSender.replaceTrack(videoTrack);
             } else {
                 peerConnection.addTrack(videoTrack, screenStream);
             }
@@ -389,18 +430,19 @@ async function startScreenShare() {
 
         // Video player'ı gizle, ekran paylaşımı container'ını göster
         document.getElementById('videoPlayerSection').style.display = 'none';
-        document.getElementById('remoteVideoContainer').style.display = 'block';
+        document.getElementById('remoteVideoContainer').style.display = 'flex';
         
         // Kendi ekranını da göster (önizleme)
-        const remoteVideo = document.getElementById('remoteVideo');
-        remoteVideo.srcObject = screenStream;
+        const localPreview = document.getElementById('localVideoPreview');
+        localPreview.srcObject = screenStream;
+        localPreview.style.display = 'block';
 
         isScreenSharing = true;
         updateScreenShareButton();
-        addSystemMessage('📺 Ekran paylaşımınız başlatıldı');
+        addSystemMessage('📺 Ekran paylaşımınız başladı');
     } catch (err) {
         console.error('❌ Ekran paylaşımı hatası:', err);
-        addSystemMessage('⚠️ Ekran paylaşımı başlatılamadı');
+        addSystemMessage('⚠️ Ekran paylaşımı iptal edildi');
     }
 }
 
@@ -415,7 +457,7 @@ function stopScreenShare() {
         const senders = peerConnection.getSenders();
         senders.forEach(sender => {
             if (sender.track && sender.track.kind === 'video') {
-                peerConnection.removeTrack(sender);
+                sender.replaceTrack(null);
             }
         });
     }
@@ -423,12 +465,13 @@ function stopScreenShare() {
     isScreenSharing = false;
     updateScreenShareButton();
     
-    // Ekran paylaşımı container'ını gizle, video player'ı göster
+    // Ekran paylaşımı container'ını gizle
     document.getElementById('remoteVideoContainer').style.display = 'none';
     document.getElementById('videoPlayerSection').style.display = 'flex';
     
-    const remoteVideo = document.getElementById('remoteVideo');
-    remoteVideo.srcObject = null;
+    const localPreview = document.getElementById('localVideoPreview');
+    localPreview.srcObject = null;
+    localPreview.style.display = 'none';
     
     addSystemMessage('📺 Ekran paylaşımı durduruldu');
 }
@@ -445,8 +488,6 @@ function toggleMicrophone() {
         const status = isMuted ? 'kapatıldı' : 'açıldı';
         addSystemMessage(`🎤 Mikrofon ${status}`);
         console.log(`🎤 Mikrofon ${status}`);
-    } else {
-        addSystemMessage('⚠️ Mikrofon bulunamadı');
     }
 }
 
@@ -460,6 +501,12 @@ async function toggleCamera() {
                 localStream.removeTrack(track);
             });
         }
+        
+        // Local preview'u gizle
+        const localPreview = document.getElementById('localCameraPreview');
+        localPreview.srcObject = null;
+        localPreview.style.display = 'none';
+        
         isVideoOn = false;
         updateCameraButton();
         addSystemMessage('📷 Kamera kapatıldı');
@@ -471,17 +518,32 @@ async function toggleCamera() {
             
             if (localStream) {
                 localStream.addTrack(videoTrack);
+            } else {
+                localStream = videoStream;
             }
 
+            // Local preview göster
+            const localPreview = document.getElementById('localCameraPreview');
+            localPreview.srcObject = new MediaStream([videoTrack]);
+            localPreview.style.display = 'block';
+
+            // Peer connection'a ekle
             if (peerConnection) {
-                peerConnection.addTrack(videoTrack, localStream);
+                const senders = peerConnection.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                
+                if (videoSender) {
+                    await videoSender.replaceTrack(videoTrack);
+                } else {
+                    peerConnection.addTrack(videoTrack, localStream);
+                }
             }
 
             isVideoOn = true;
             updateCameraButton();
             addSystemMessage('📷 Kamera açıldı');
         } catch (err) {
-            console.error('Kamera erişim hatası:', err);
+            console.error('Kamera hatası:', err);
             addSystemMessage('⚠️ Kamera açılamadı');
         }
     }
@@ -517,7 +579,7 @@ function updateScreenShareButton() {
         
         if (isScreenSharing) {
             icon.textContent = '⏹️';
-            text.textContent = 'Paylaşımı Durdur';
+            text.textContent = 'Durdur';
             btn.classList.add('active');
         } else {
             icon.textContent = '📺';
@@ -535,11 +597,11 @@ function updateMicButton() {
         
         if (isMuted) {
             icon.textContent = '🔇';
-            text.textContent = 'Mikrofon Kapalı';
+            text.textContent = 'Mikrofon';
             btn.classList.remove('active');
         } else {
             icon.textContent = '🎤';
-            text.textContent = 'Mikrofon Açık';
+            text.textContent = 'Mikrofon';
             btn.classList.add('active');
         }
     }
@@ -553,17 +615,18 @@ function updateCameraButton() {
         
         if (isVideoOn) {
             icon.textContent = '📷';
-            text.textContent = 'Kamera Açık';
+            text.textContent = 'Kamera';
             btn.classList.add('active');
         } else {
             icon.textContent = '📷';
-            text.textContent = 'Kamera Kapalı';
+            text.textContent = 'Kamera';
             btn.classList.remove('active');
         }
     }
 }
 
-// Senkronizasyon fonksiyonları
+// ==================== Senkronizasyon ====================
+
 function requestSync() {
     socket.emit('sync-request', { roomId: currentRoom, username: currentUsername });
     startCountdown();
@@ -576,18 +639,66 @@ function startCountdown() {
             addSystemMessage(`⏱️ ${count}...`);
             count--;
         } else {
-            addSystemMessage('▶️ BAŞLA!');
+            addSystemMessage('▶️ BAŞLIYOR!');
             clearInterval(interval);
+            
+            // Videoyu başlat
+            setTimeout(() => {
+                playVideo();
+            }, 100);
         }
     }, 1000);
 }
 
+function playVideo() {
+    if (currentVideoType === 'youtube' && youtubePlayer) {
+        youtubePlayer.playVideo();
+        const currentTime = youtubePlayer.getCurrentTime();
+        socket.emit('play', { roomId: currentRoom, currentTime });
+    } else if (currentVideoType === 'vimeo' && vimeoPlayer) {
+        vimeoPlayer.play();
+        vimeoPlayer.getCurrentTime().then((time) => {
+            socket.emit('play', { roomId: currentRoom, currentTime: time });
+        });
+    } else if (currentVideoType === 'html5' && videoPlayer) {
+        videoPlayer.play();
+        socket.emit('play', { roomId: currentRoom, currentTime: videoPlayer.currentTime });
+    }
+}
+
 function showSyncNotification(username) {
-    addSystemMessage(`⏱️ ${username} senkronizasyon başlatıyor...`);
+    addSystemMessage(`⏱️ ${username} başlatıyor...`);
     startCountdown();
 }
 
-// ==================== Video Player Fonksiyonları ====================
+// ==================== Video Kontrolleri ====================
+
+function toggleFullscreen() {
+    const container = document.getElementById('remoteVideoContainer').style.display !== 'none' 
+        ? document.getElementById('remoteVideoContainer')
+        : document.querySelector('.video-player');
+    
+    if (!document.fullscreenElement) {
+        container.requestFullscreen();
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function changeVolume(value) {
+    const volume = value / 100;
+    
+    const remoteVideo = document.getElementById('remoteVideo');
+    const remoteAudio = document.getElementById('remoteAudio');
+    
+    if (remoteVideo) remoteVideo.volume = volume;
+    if (remoteAudio) remoteAudio.volume = volume;
+    if (videoPlayer) videoPlayer.volume = volume;
+    
+    document.getElementById('volumeValue').textContent = value;
+}
+
+// ==================== Video Player ====================
 
 function setupVideoPlayer() {
     videoPlayer = document.getElementById('videoPlayer');
@@ -667,7 +778,6 @@ function loadRemoteVideo(videoUrl, currentTime, isPlaying, videoType) {
     
     clearCurrentVideo();
     
-    // Ekran paylaşımını gizle, video player'ı göster
     document.getElementById('remoteVideoContainer').style.display = 'none';
     document.getElementById('videoPlayerSection').style.display = 'flex';
 
@@ -825,12 +935,12 @@ function createPlayerDiv(id) {
     return div;
 }
 
-// ==================== UI Fonksiyonları ====================
+// ==================== UI ====================
 
 function updateUsersList(users) {
     const usersList = document.getElementById('usersList');
     const catEmoji = users.length > 1 ? '🐱🐱' : '🐱';
-    usersList.innerHTML = `${catEmoji} ${users.length} kişi: ${users.map(u => u.username).join(', ')}`;
+    usersList.innerHTML = `${catEmoji} ${users.length}: ${users.map(u => u.username).join(', ')}`;
 }
 
 function addSystemMessage(message) {
@@ -881,7 +991,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-window.addEventListener('beforeunload', (e) => {
+window.addEventListener('beforeunload', () => {
     if (socket && socket.connected) {
         closeWebRTCConnection();
         if (localStream) {
