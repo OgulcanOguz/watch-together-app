@@ -192,8 +192,8 @@ body {
     font-weight: 500;
 }
 
-/* Audio Bar */
-.audio-bar {
+/* Mikrofon Gain Control */
+.mic-gain-control {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -202,20 +202,49 @@ body {
     border: 1px solid var(--border);
 }
 
-.audio-label {
+.gain-label {
     font-size: 13px;
     color: var(--text-dim);
     white-space: nowrap;
 }
 
-#audioVisualizer {
+#micGainSlider {
     flex: 1;
     height: 4px;
     background: var(--border);
     border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
-/* Remote Container */
+#micGainSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+#micGainSlider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.gain-value {
+    font-size: 13px;
+    color: var(--text-dim);
+    min-width: 35px;
+    text-align: right;
+}
+
+/* Remote Container (ANA ALAN) */
 .remote-container {
     position: relative;
     flex: 1;
@@ -384,7 +413,7 @@ body {
     font-size: 14px;
 }
 
-/* Local Previews */
+/* Local Camera Preview (Sadece Kamera - Küçük Pencere) */
 .local-preview {
     position: fixed;
     bottom: 80px;
@@ -396,10 +425,6 @@ body {
     border-radius: 4px;
     object-fit: cover;
     z-index: 100;
-}
-
-.camera-preview {
-    bottom: 240px;
 }
 
 /* ============== CHAT ============== */
