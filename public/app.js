@@ -76,6 +76,9 @@ async function joinRoom() {
 function setupSocketListeners() {
     socket.on('user-joined', (data) => {
         console.log('👤 Kullanıcı katıldı:', data);
+        console.log('📋 Kullanıcı listesi:', data.users);
+        console.log('🆔 Ben:', currentUsername);
+        
         addSystemMessage(`${data.username} odaya katıldı 🐱`);
         updateUsersList(data.users);
         
@@ -83,18 +86,22 @@ function setupSocketListeners() {
             loadRemoteVideo(data.videoUrl, data.currentTime, data.isPlaying, data.videoType);
         }
 
-        // İlk kullanıcı = initiator
+        // Sadece 2 kişi varsa WebRTC başlat
         if (data.users.length === 2) {
-            if (data.users[0].username === currentUsername) {
+            // Yeni katılan kişi offer gönderir (caller)
+            // İlk giren kişi bekler (receiver)
+            if (data.username === currentUsername) {
+                // Ben yeni katıldım, offer göndereceğim
                 isInitiator = true;
-                console.log('🎬 Ben initiator\'üm, 3 saniye sonra offer göndereceğim');
+                console.log('🎬 Ben yeni katıldım (caller), 3 saniye sonra offer göndereceğim');
                 setTimeout(() => {
                     console.log('📤 Offer oluşturuluyor...');
                     createOffer();
                 }, 3000);
             } else {
+                // Başkası katıldı, ben zaten odadaydım (receiver)
                 isInitiator = false;
-                console.log('👂 Ben receiver\'üm, offer bekliyorum');
+                console.log('👂 Ben zaten odadaydım (receiver), offer bekliyorum');
             }
         }
     });
