@@ -15,9 +15,8 @@ let screenStream = null;
 let isScreenSharing = false;
 let isMuted = true;
 let isVideoOn = false;
+let micGainNode = null;
 let audioContext = null;
-let analyser = null;
-let microphone = null;
 
 // ICE sunucuları
 const iceServers = {
@@ -66,7 +65,6 @@ async function joinRoom() {
     setupSocketListeners();
     setupVideoPlayer();
     await setupWebRTC();
-    setupAudioVisualizer();
 }
 
 function setupSocketListeners() {
@@ -80,7 +78,7 @@ function setupSocketListeners() {
 
         // İkinci kullanıcı katıldığında WebRTC bağlantısı başlat
         if (data.users.length === 2 && data.users[0].username === currentUsername) {
-            setTimeout(() => createOffer(), 1500);
+            setTimeout(() => createOffer(), 2000);
         }
     });
 
@@ -180,12 +178,15 @@ async function setupWebRTC() {
             audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
-                autoGainControl: true
+                autoGainControl: false // Manuel gain kullanacağız
             }, 
             video: false 
         });
         
         console.log('✅ Mikrofon erişimi sağlandı');
+        
+        // Audio context ve gain node oluştur
+        setupAudioGain();
         
         // Başlangıçta sessiz
         localStream.getAudioTracks().forEach(track => {
@@ -201,55 +202,41 @@ async function setupWebRTC() {
     }
 }
 
-function setupAudioVisualizer() {
-    if (!localStream) return;
-    
+function setupAudioGain() {
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        microphone = audioContext.createMediaStreamSource(localStream);
-        analyser.fftSize = 256;
-        microphone.connect(analyser);
+        const source = audioContext.createMediaStreamSource(localStream);
+        micGainNode = audioContext.createGain();
         
-        visualizeAudio();
+        // Başlangıç gain değeri %100
+        micGainNode.gain.value = 1.0;
+        
+        source.connect(micGainNode);
+        
+        // Yeni stream oluştur gain node'dan
+        const destination = audioContext.createMediaStreamDestination();
+        micGainNode.connect(destination);
+        
+        // Eski audio track'i kaldır, yenisini ekle
+        const oldAudioTrack = localStream.getAudioTracks()[0];
+        localStream.removeTrack(oldAudioTrack);
+        destination.stream.getAudioTracks().forEach(track => {
+            localStream.addTrack(track);
+        });
+        
+        console.log('✅ Mikrofon gain ayarlandı');
     } catch (err) {
-        console.error('Ses visualizer hatası:', err);
+        console.error('Gain setup hatası:', err);
     }
 }
 
-function visualizeAudio() {
-    const canvas = document.getElementById('audioVisualizer');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    
-    function draw() {
-        requestAnimationFrame(draw);
-        
-        analyser.getByteFrequencyData(dataArray);
-        
-        // Ortalama ses seviyesi
-        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-        const normalizedVolume = average / 255;
-        
-        // Canvas temizle
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        if (!isMuted && normalizedVolume > 0.01) {
-            // Ses barı çiz
-            const barWidth = canvas.width * normalizedVolume;
-            const gradient = ctx.createLinearGradient(0, 0, barWidth, 0);
-            gradient.addColorStop(0, '#10b981');
-            gradient.addColorStop(1, '#3b82f6');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, barWidth, canvas.height);
-        }
+function changeMicGain(value) {
+    const gain = value / 100; // 0-100 → 0-1
+    if (micGainNode) {
+        micGainNode.gain.value = gain;
+        console.log(`🎤 Mikrofon seviyesi: ${value}%`);
     }
-    
-    draw();
+    document.getElementById('micGainValue').textContent = value;
 }
 
 async function createOffer() {
@@ -261,7 +248,7 @@ async function createOffer() {
         // Yerel ses akışını ekle
         if (localStream) {
             localStream.getTracks().forEach(track => {
-                console.log('➕ Track ekleniyor:', track.kind);
+                console.log('➕ Track ekleniyor:', track.kind, track.id);
                 peerConnection.addTrack(track, localStream);
             });
         }
@@ -290,7 +277,7 @@ async function handleOffer(offer) {
         // Yerel ses akışını ekle
         if (localStream) {
             localStream.getTracks().forEach(track => {
-                console.log('➕ Track ekleniyor:', track.kind);
+                console.log('➕ Track ekleniyor:', track.kind, track.id);
                 peerConnection.addTrack(track, localStream);
             });
         }
@@ -320,6 +307,7 @@ async function handleIceCandidate(candidate) {
     try {
         if (peerConnection && peerConnection.remoteDescription) {
             await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            console.log('✅ ICE candidate eklendi');
         }
     } catch (err) {
         console.error('❌ ICE candidate hatası:', err);
@@ -333,34 +321,30 @@ function setupPeerConnectionListeners() {
                 roomId: currentRoom, 
                 candidate: event.candidate 
             });
+            console.log('📤 ICE candidate gönderildi');
         }
     };
 
     peerConnection.ontrack = (event) => {
-        console.log('📥 Uzak track alındı:', event.track.kind);
+        console.log('📥 Uzak track alındı:', event.track.kind, event.track.id);
         
         if (!remoteStream) {
             remoteStream = new MediaStream();
         }
         
+        // Track'i ekle
         remoteStream.addTrack(event.track);
         
-        // Ses veya video track'ini ilgili elemana bağla
         if (event.track.kind === 'audio') {
+            // Ses için remote audio element
             const remoteAudio = document.getElementById('remoteAudio');
             remoteAudio.srcObject = remoteStream;
-            remoteAudio.play().catch(e => console.log('Autoplay engellendi:', e));
+            remoteAudio.play().catch(e => console.log('Audio autoplay:', e));
             console.log('✅ Uzak ses bağlandı');
             addSystemMessage('🔊 Ses aktif');
         } else if (event.track.kind === 'video') {
-            const remoteVideo = document.getElementById('remoteVideo');
-            remoteVideo.srcObject = remoteStream;
-            remoteVideo.play().catch(e => console.log('Autoplay engellendi:', e));
-            document.getElementById('remoteVideoContainer').style.display = 'flex';
-            
-            // Video yüklendiğinde video player'ı gizle
-            document.getElementById('videoPlayerSection').style.display = 'none';
-            
+            // Video için ana player'a yerleştir
+            showRemoteVideo(remoteStream);
             console.log('✅ Uzak video bağlandı');
             addSystemMessage('📺 Ekran paylaşımı aktif');
         }
@@ -379,6 +363,32 @@ function setupPeerConnectionListeners() {
             closeWebRTCConnection();
         }
     };
+
+    peerConnection.oniceconnectionstatechange = () => {
+        console.log('🧊 ICE:', peerConnection.iceConnectionState);
+    };
+}
+
+function showRemoteVideo(stream) {
+    // Video player'ı gizle
+    document.getElementById('videoPlayerSection').style.display = 'none';
+    
+    // Remote video container'ı göster ve ANA ALANA YERLEŞTIR
+    const remoteContainer = document.getElementById('remoteVideoContainer');
+    remoteContainer.style.display = 'flex';
+    
+    // Remote video'yu ayarla
+    const remoteVideo = document.getElementById('remoteVideo');
+    remoteVideo.srcObject = stream;
+    remoteVideo.play().catch(e => console.log('Video autoplay:', e));
+}
+
+function hideRemoteVideo() {
+    document.getElementById('remoteVideoContainer').style.display = 'none';
+    document.getElementById('videoPlayerSection').style.display = 'flex';
+    
+    const remoteVideo = document.getElementById('remoteVideo');
+    remoteVideo.srcObject = null;
 }
 
 async function toggleScreenShare() {
@@ -394,48 +404,49 @@ async function startScreenShare() {
         screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: { 
                 cursor: "always",
-                displaySurface: "monitor"
+                displaySurface: "monitor",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                frameRate: { ideal: 30 }
             },
             audio: true
         });
 
         console.log('✅ Ekran paylaşımı başladı');
 
-        // Ekran akışını peer connection'a ekle
+        // Video track'i peer connection'a ekle
+        const videoTrack = screenStream.getVideoTracks()[0];
+        
         if (peerConnection) {
-            const videoTrack = screenStream.getVideoTracks()[0];
-            
-            // Mevcut video sender'ı bul ve değiştir
             const senders = peerConnection.getSenders();
             const videoSender = senders.find(s => s.track && s.track.kind === 'video');
             
             if (videoSender) {
+                console.log('🔄 Video track değiştiriliyor...');
                 await videoSender.replaceTrack(videoTrack);
             } else {
+                console.log('➕ Yeni video track ekleniyor...');
                 peerConnection.addTrack(videoTrack, screenStream);
             }
 
-            // Ses track'i varsa ekle
+            // Sistem sesini de ekle
             const audioTracks = screenStream.getAudioTracks();
             if (audioTracks.length > 0) {
-                peerConnection.addTrack(audioTracks[0], screenStream);
-                console.log('✅ Sistem sesi paylaşılıyor');
+                const audioSender = senders.find(s => s.track && s.track.kind === 'audio' && s.track.label.includes('system'));
+                if (!audioSender) {
+                    peerConnection.addTrack(audioTracks[0], screenStream);
+                    console.log('✅ Sistem sesi eklendi');
+                }
             }
-
-            // Kullanıcı paylaşımı durdurduğunda
-            videoTrack.onended = () => {
-                stopScreenShare();
-            };
         }
 
-        // Video player'ı gizle, ekran paylaşımı container'ını göster
-        document.getElementById('videoPlayerSection').style.display = 'none';
-        document.getElementById('remoteVideoContainer').style.display = 'flex';
-        
-        // Kendi ekranını da göster (önizleme)
-        const localPreview = document.getElementById('localVideoPreview');
-        localPreview.srcObject = screenStream;
-        localPreview.style.display = 'block';
+        // Kendi ekranını da göster (ANA ALANDA)
+        showRemoteVideo(screenStream);
+
+        // Paylaşım durdurulduğunda
+        videoTrack.onended = () => {
+            stopScreenShare();
+        };
 
         isScreenSharing = true;
         updateScreenShareButton();
@@ -452,7 +463,7 @@ function stopScreenShare() {
         screenStream = null;
     }
 
-    // Peer connection'dan video track'i kaldır
+    // Video track'i kaldır
     if (peerConnection) {
         const senders = peerConnection.getSenders();
         senders.forEach(sender => {
@@ -464,15 +475,7 @@ function stopScreenShare() {
 
     isScreenSharing = false;
     updateScreenShareButton();
-    
-    // Ekran paylaşımı container'ını gizle
-    document.getElementById('remoteVideoContainer').style.display = 'none';
-    document.getElementById('videoPlayerSection').style.display = 'flex';
-    
-    const localPreview = document.getElementById('localVideoPreview');
-    localPreview.srcObject = null;
-    localPreview.style.display = 'none';
-    
+    hideRemoteVideo();
     addSystemMessage('📺 Ekran paylaşımı durduruldu');
 }
 
@@ -513,7 +516,12 @@ async function toggleCamera() {
     } else {
         // Kamerayı aç
         try {
-            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const videoStream = await navigator.mediaDevices.getUserMedia({ 
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
             const videoTrack = videoStream.getVideoTracks()[0];
             
             if (localStream) {
@@ -562,12 +570,9 @@ function closeWebRTCConnection() {
         remoteStream = null;
     }
     
-    document.getElementById('remoteVideoContainer').style.display = 'none';
-    document.getElementById('videoPlayerSection').style.display = 'flex';
+    hideRemoteVideo();
     
-    const remoteVideo = document.getElementById('remoteVideo');
     const remoteAudio = document.getElementById('remoteAudio');
-    remoteVideo.srcObject = null;
     remoteAudio.srcObject = null;
 }
 
@@ -757,8 +762,12 @@ function loadVideo() {
 
     clearCurrentVideo();
     
-    // Ekran paylaşımını gizle, video player'ı göster
-    document.getElementById('remoteVideoContainer').style.display = 'none';
+    // Ekran paylaşımını durdur, video player'ı göster
+    if (isScreenSharing) {
+        stopScreenShare();
+    }
+    
+    hideRemoteVideo();
     document.getElementById('videoPlayerSection').style.display = 'flex';
 
     if (videoType === 'youtube') {
@@ -777,8 +786,7 @@ function loadRemoteVideo(videoUrl, currentTime, isPlaying, videoType) {
     currentVideoType = videoType || detectVideoType(videoUrl);
     
     clearCurrentVideo();
-    
-    document.getElementById('remoteVideoContainer').style.display = 'none';
+    hideRemoteVideo();
     document.getElementById('videoPlayerSection').style.display = 'flex';
 
     if (currentVideoType === 'youtube') {
@@ -996,6 +1004,9 @@ window.addEventListener('beforeunload', () => {
         closeWebRTCConnection();
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
+        }
+        if (audioContext) {
+            audioContext.close();
         }
     }
 });
