@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birlikte İzle v3.0 🎬</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Ekranı -->
+        <div class="login-screen" id="loginScreen">
+            <h1>🎬 Birlikte İzle v3.0</h1>
+            <p>Sevgilinle senkronize film, dizi izle + Sesli görüşme + Ekran paylaşımı!</p>
+            
+            <div class="input-group">
+                <input type="text" id="usernameInput" placeholder="Adınızı girin" maxlength="20">
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="roomIdInput" placeholder="Oda kodu (örn: sando123)" maxlength="30">
+            </div>
+            
+            <button class="btn" onclick="joinRoom()">Odaya Katıl</button>
+        </div>
+
+        <!-- Ana Ekran -->
+        <div class="main-screen" id="mainScreen">
+            <!-- Video Bölümü -->
+            <div class="video-section">
+                <div class="room-info" id="roomInfo">
+                    Oda: <span id="currentRoom"></span>
+                </div>
+
+                <!-- WebRTC Kontrolleri -->
+                <div class="webrtc-controls">
+                    <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-btn">
+                        📺 Ekran Paylaş
+                    </button>
+                    <button id="micBtn" onclick="toggleMicrophone()" class="control-btn">
+                        🔇 Mikrofon Kapalı
+                    </button>
+                    <button id="cameraBtn" onclick="toggleCamera()" class="control-btn">
+                        📷 Kamera Kapalı
+                    </button>
+                    <button onclick="requestSync()" class="control-btn sync-btn">
+                        ⏱️ 3-2-1 Başla!
+                    </button>
+                </div>
+
+                <!-- Uzak Ekran/Video -->
+                <div id="remoteVideoContainer" class="remote-video-container" style="display: none;">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <audio id="remoteAudio" autoplay></audio>
+                </div>
+
+                <!-- Video URL Girişi -->
+                <div class="video-controls">
+                    <input type="text" id="videoUrlInput" placeholder="Video URL'si (YouTube, Vimeo, MP4, veya kaçak site için ekran paylaş!)">
+                    <button onclick="loadVideo()">Videoyu Yükle</button>
+                </div>
+
+                <!-- Video Player -->
+                <div class="video-player">
+                    <div class="video-placeholder" id="placeholder">
+                        🎬 Video yüklemek için yukarıdan URL girin<br>
+                        📺 Veya "Ekran Paylaş" ile herhangi bir siteyi izleyin!
+                    </div>
+                    <video id="videoPlayer" controls style="display: none;"></video>
+                </div>
+            </div>
+
+            <!-- Chat Bölümü -->
+            <div class="chat-section">
+                <div class="chat-header">
+                    <h2>💬 Sohbet</h2>
+                    <div class="users-list" id="usersList">Katılımcılar: 0</div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        Hoş geldiniz! 👋<br>
+                        💡 İpucu: "Ekran Paylaş" ile herhangi bir siteyi izleyebilirsiniz!
+                    </div>
+                </div>
+
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Mesajınızı yazın..." onkeypress="handleMessageKeypress(event)">
+                    <button onclick="sendMessage()">Gönder</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
