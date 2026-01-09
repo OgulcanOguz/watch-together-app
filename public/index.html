@@ -3,35 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐱 Kedimle İzle 💕</title>
+    <title>🐱 Together | Birlikte İzle</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <!-- Login Ekranı -->
         <div class="login-screen" id="loginScreen">
-            <div class="cat-logo">🐱</div>
-            <h1>🐱 Kedimle İzle 💕</h1>
-            <p class="subtitle">Sevgilinle miyavlayarak film izle! 😻</p>
-            
-            <div class="input-group">
-                <span class="input-icon">😺</span>
-                <input type="text" id="usernameInput" placeholder="İsmin (örn: Sando, Kedicik)" maxlength="20">
-            </div>
-            
-            <div class="input-group">
-                <span class="input-icon">🔑</span>
-                <input type="text" id="roomIdInput" placeholder="Gizli kedi odası kodu (örn: kedicikler2025)" maxlength="30">
-            </div>
-            
-            <button class="btn" onclick="joinRoom()">
-                <span>🐾 Kedi Odasına Gir 🐾</span>
-            </button>
-            
-            <div class="cat-footer">
-                <span class="dancing-cat">😸</span>
-                <span class="dancing-cat">😻</span>
-                <span class="dancing-cat">😺</span>
+            <div class="login-box">
+                <div class="logo-container">
+                    <div class="logo-icon">🐱</div>
+                    <h1>Together</h1>
+                    <p class="tagline">Birlikte izle, birlikte eğlen</p>
+                </div>
+                
+                <div class="input-wrapper">
+                    <div class="input-group">
+                        <input type="text" id="usernameInput" placeholder="İsminiz" maxlength="20">
+                        <span class="input-underline"></span>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="text" id="roomIdInput" placeholder="Oda kodu" maxlength="30">
+                        <span class="input-underline"></span>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="joinRoom()">
+                    <span>Odaya Katıl</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+                
+                <div class="cat-hint">
+                    <span class="cat-small">🐱</span>
+                    <span>Sevgilinle senkronize izle</span>
+                </div>
             </div>
         </div>
 
@@ -39,101 +45,89 @@
         <div class="main-screen" id="mainScreen">
             <!-- Video Bölümü -->
             <div class="video-section">
-                <div class="room-info" id="roomInfo">
-                    <span class="cat-icon">🐱</span>
-                    Kedi Odası: <span id="currentRoom"></span>
-                    <span class="cat-icon">🐱</span>
+                <!-- Başlık -->
+                <div class="header-bar">
+                    <div class="room-badge">
+                        <span class="cat-small">🐱</span>
+                        <span id="currentRoom"></span>
+                    </div>
                 </div>
 
                 <!-- WebRTC Kontrolleri -->
-                <div class="webrtc-controls">
+                <div class="control-panel">
                     <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-btn">
                         <span class="btn-icon">📺</span>
-                        <span>Ekran Paylaş</span>
+                        <span class="btn-text">Ekran Paylaş</span>
                     </button>
                     <button id="micBtn" onclick="toggleMicrophone()" class="control-btn">
                         <span class="btn-icon">🔇</span>
-                        <span>Miyavla!</span>
+                        <span class="btn-text">Mikrofon Kapalı</span>
                     </button>
                     <button id="cameraBtn" onclick="toggleCamera()" class="control-btn">
-                        <span class="btn-icon">😸</span>
-                        <span>Kamera</span>
+                        <span class="btn-icon">📷</span>
+                        <span class="btn-text">Kamera Kapalı</span>
                     </button>
                     <button onclick="requestSync()" class="control-btn sync-btn">
                         <span class="btn-icon">⏱️</span>
-                        <span>3-2-1 Pati!</span>
+                        <span class="btn-text">3-2-1 Başla</span>
                     </button>
                 </div>
 
-                <!-- Uzak Ekran/Video -->
-                <div id="remoteVideoContainer" class="remote-video-container" style="display: none;">
-                    <div class="remote-label">
-                        <span class="cat-emoji">😻</span>
-                        Kedicik'in Ekranı
+                <!-- Uzak Video Container (Ekran Paylaşımı) -->
+                <div id="remoteVideoContainer" class="screen-share-container" style="display: none;">
+                    <div class="stream-label">
+                        <span class="pulse-dot"></span>
+                        <span>Ekran Paylaşımı Aktif</span>
                     </div>
                     <video id="remoteVideo" autoplay playsinline></video>
                     <audio id="remoteAudio" autoplay></audio>
                 </div>
 
-                <!-- Video URL Girişi -->
-                <div class="video-controls">
-                    <div class="video-input-wrapper">
-                        <span class="input-icon">🎬</span>
-                        <input type="text" id="videoUrlInput" placeholder="Video linki (YouTube, Vimeo, MP4) veya ekran paylaş! 🐾">
+                <!-- Video Player Section -->
+                <div id="videoPlayerSection" class="video-player-section">
+                    <!-- Video URL Girişi -->
+                    <div class="video-input-bar">
+                        <input type="text" id="videoUrlInput" placeholder="Video URL'si (YouTube, Vimeo, MP4) veya ekran paylaş 📺">
+                        <button onclick="loadVideo()" class="load-btn">
+                            <span>▶️</span>
+                        </button>
                     </div>
-                    <button onclick="loadVideo()" class="load-btn">
-                        <span>▶️</span> Yükle
-                    </button>
-                </div>
 
-                <!-- Video Player -->
-                <div class="video-player">
-                    <div class="video-placeholder" id="placeholder">
-                        <div class="placeholder-content">
-                            <div class="cat-animation">
-                                <span class="cat-emoji big">🐱</span>
-                            </div>
-                            <h3>🎬 Video yükle veya ekran paylaş!</h3>
-                            <p>📺 "Ekran Paylaş" ile herhangi bir siteyi izleyin</p>
-                            <p>🎥 Veya YouTube/Vimeo linki yapıştırın</p>
-                            <div class="paw-prints">
-                                <span>🐾</span><span>🐾</span><span>🐾</span>
+                    <!-- Video Player -->
+                    <div class="video-player">
+                        <div class="video-placeholder" id="placeholder">
+                            <div class="placeholder-content">
+                                <div class="cat-icon-large">🐱</div>
+                                <h3>Video yükle veya ekran paylaş</h3>
+                                <p>📺 Ekran paylaş ile herhangi bir siteyi izleyin</p>
+                                <p>🎥 YouTube, Vimeo veya MP4 linki yapıştırın</p>
                             </div>
                         </div>
+                        <video id="videoPlayer" controls style="display: none;"></video>
                     </div>
-                    <video id="videoPlayer" controls style="display: none;"></video>
                 </div>
             </div>
 
             <!-- Chat Bölümü -->
             <div class="chat-section">
                 <div class="chat-header">
-                    <h2>💬 Miyav Sohbet 😺</h2>
-                    <div class="users-list" id="usersList">
-                        <span class="cat-emoji">🐱</span>
-                        Kedicikler: 0
+                    <h2>💬 Sohbet</h2>
+                    <div class="users-badge" id="usersList">
+                        <span class="cat-small">🐱</span> 0 kişi
                     </div>
                 </div>
 
                 <div class="chat-messages" id="chatMessages">
                     <div class="message system">
-                        <span class="cat-emoji">😻</span> Kedi odasına hoş geldin! <span class="cat-emoji">😻</span>
-                        <br>
-                        💡 İpucu: "Ekran Paylaş" ile herhangi bir siteyi izleyebilirsin!
+                        Odaya hoş geldin! 🐱
                     </div>
                 </div>
 
-                <div class="chat-input">
-                    <input type="text" id="messageInput" placeholder="Miyavla... 🐾" onkeypress="handleMessageKeypress(event)">
+                <div class="chat-input-bar">
+                    <input type="text" id="messageInput" placeholder="Mesaj yaz..." onkeypress="handleMessageKeypress(event)">
                     <button onclick="sendMessage()" class="send-btn">
-                        <span>📨</span>
+                        <span>→</span>
                     </button>
-                </div>
-                
-                <div class="cat-decorations">
-                    <span class="floating-cat">😸</span>
-                    <span class="floating-cat">😺</span>
-                    <span class="floating-cat">😻</span>
                 </div>
             </div>
         </div>
