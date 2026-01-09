@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🐱 Together | Birlikte İzle</title>
+    <title>Together | Watch Together</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,32 +11,15 @@
         <!-- Login Ekranı -->
         <div class="login-screen" id="loginScreen">
             <div class="login-box">
-                <div class="logo-container">
-                    <div class="logo-icon">🐱</div>
+                <div class="logo">
+                    <span class="logo-icon">🐱</span>
                     <h1>Together</h1>
-                    <p class="tagline">Birlikte izle, birlikte eğlen</p>
                 </div>
                 
-                <div class="input-wrapper">
-                    <div class="input-group">
-                        <input type="text" id="usernameInput" placeholder="İsminiz" maxlength="20">
-                        <span class="input-underline"></span>
-                    </div>
-                    
-                    <div class="input-group">
-                        <input type="text" id="roomIdInput" placeholder="Oda kodu" maxlength="30">
-                        <span class="input-underline"></span>
-                    </div>
-                </div>
-                
-                <button class="btn-primary" onclick="joinRoom()">
-                    <span>Odaya Katıl</span>
-                    <span class="btn-arrow">→</span>
-                </button>
-                
-                <div class="cat-hint">
-                    <span class="cat-small">🐱</span>
-                    <span>Sevgilinle senkronize izle</span>
+                <div class="login-form">
+                    <input type="text" id="usernameInput" placeholder="İsim" maxlength="20">
+                    <input type="text" id="roomIdInput" placeholder="Oda kodu" maxlength="30">
+                    <button onclick="joinRoom()">Katıl</button>
                 </div>
             </div>
         </div>
@@ -46,88 +29,102 @@
             <!-- Video Bölümü -->
             <div class="video-section">
                 <!-- Başlık -->
-                <div class="header-bar">
-                    <div class="room-badge">
-                        <span class="cat-small">🐱</span>
+                <div class="top-bar">
+                    <div class="room-info">
+                        <span>🐱</span>
                         <span id="currentRoom"></span>
                     </div>
                 </div>
 
-                <!-- WebRTC Kontrolleri -->
-                <div class="control-panel">
-                    <button id="screenShareBtn" onclick="toggleScreenShare()" class="control-btn">
+                <!-- Kontroller -->
+                <div class="controls">
+                    <button id="screenShareBtn" onclick="toggleScreenShare()">
                         <span class="btn-icon">📺</span>
                         <span class="btn-text">Ekran Paylaş</span>
                     </button>
-                    <button id="micBtn" onclick="toggleMicrophone()" class="control-btn">
+                    <button id="micBtn" onclick="toggleMicrophone()">
                         <span class="btn-icon">🔇</span>
-                        <span class="btn-text">Mikrofon Kapalı</span>
+                        <span class="btn-text">Mikrofon</span>
                     </button>
-                    <button id="cameraBtn" onclick="toggleCamera()" class="control-btn">
+                    <button id="cameraBtn" onclick="toggleCamera()">
                         <span class="btn-icon">📷</span>
-                        <span class="btn-text">Kamera Kapalı</span>
+                        <span class="btn-text">Kamera</span>
                     </button>
-                    <button onclick="requestSync()" class="control-btn sync-btn">
+                    <button class="sync-btn" onclick="requestSync()">
                         <span class="btn-icon">⏱️</span>
                         <span class="btn-text">3-2-1 Başla</span>
                     </button>
                 </div>
 
-                <!-- Uzak Video Container (Ekran Paylaşımı) -->
-                <div id="remoteVideoContainer" class="screen-share-container" style="display: none;">
-                    <div class="stream-label">
-                        <span class="pulse-dot"></span>
-                        <span>Ekran Paylaşımı Aktif</span>
+                <!-- Ses Barı -->
+                <div class="audio-bar" id="audioBar">
+                    <span class="audio-label">🎤 Ses Seviyesi</span>
+                    <canvas id="audioVisualizer" width="200" height="4"></canvas>
+                </div>
+
+                <!-- Ekran Paylaşımı Container -->
+                <div id="remoteVideoContainer" class="remote-container" style="display: none;">
+                    <div class="stream-badge">
+                        <span class="live-dot"></span>
+                        <span>Yayın</span>
                     </div>
                     <video id="remoteVideo" autoplay playsinline></video>
                     <audio id="remoteAudio" autoplay></audio>
+                    
+                    <!-- Video Kontrolleri -->
+                    <div class="video-controls-overlay">
+                        <button onclick="toggleFullscreen()" class="ctrl-btn" title="Tam Ekran">
+                            <span>⛶</span>
+                        </button>
+                        <div class="volume-control">
+                            <span>🔊</span>
+                            <input type="range" min="0" max="100" value="100" onchange="changeVolume(this.value)">
+                            <span id="volumeValue">100</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Video Player Section -->
-                <div id="videoPlayerSection" class="video-player-section">
-                    <!-- Video URL Girişi -->
-                    <div class="video-input-bar">
-                        <input type="text" id="videoUrlInput" placeholder="Video URL'si (YouTube, Vimeo, MP4) veya ekran paylaş 📺">
-                        <button onclick="loadVideo()" class="load-btn">
-                            <span>▶️</span>
-                        </button>
+                <div id="videoPlayerSection" class="player-section">
+                    <div class="video-input">
+                        <input type="text" id="videoUrlInput" placeholder="Video URL (YouTube, Vimeo, MP4)">
+                        <button onclick="loadVideo()">▶</button>
                     </div>
 
-                    <!-- Video Player -->
                     <div class="video-player">
                         <div class="video-placeholder" id="placeholder">
                             <div class="placeholder-content">
-                                <div class="cat-icon-large">🐱</div>
-                                <h3>Video yükle veya ekran paylaş</h3>
-                                <p>📺 Ekran paylaş ile herhangi bir siteyi izleyin</p>
-                                <p>🎥 YouTube, Vimeo veya MP4 linki yapıştırın</p>
+                                <span class="placeholder-icon">🐱</span>
+                                <p>Video yükle veya ekran paylaş</p>
                             </div>
                         </div>
                         <video id="videoPlayer" controls style="display: none;"></video>
                     </div>
                 </div>
+
+                <!-- Kamera Önizlemeleri -->
+                <video id="localVideoPreview" class="local-preview screen-preview" autoplay muted playsinline style="display: none;"></video>
+                <video id="localCameraPreview" class="local-preview camera-preview" autoplay muted playsinline style="display: none;"></video>
             </div>
 
             <!-- Chat Bölümü -->
             <div class="chat-section">
                 <div class="chat-header">
-                    <h2>💬 Sohbet</h2>
-                    <div class="users-badge" id="usersList">
-                        <span class="cat-small">🐱</span> 0 kişi
+                    <h3>Sohbet</h3>
+                    <div class="users-count" id="usersList">
+                        🐱 0
                     </div>
                 </div>
 
                 <div class="chat-messages" id="chatMessages">
                     <div class="message system">
-                        Odaya hoş geldin! 🐱
+                        Odaya hoş geldin 🐱
                     </div>
                 </div>
 
-                <div class="chat-input-bar">
-                    <input type="text" id="messageInput" placeholder="Mesaj yaz..." onkeypress="handleMessageKeypress(event)">
-                    <button onclick="sendMessage()" class="send-btn">
-                        <span>→</span>
-                    </button>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Mesaj..." onkeypress="handleMessageKeypress(event)">
+                    <button onclick="sendMessage()">→</button>
                 </div>
             </div>
         </div>
