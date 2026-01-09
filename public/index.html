@@ -56,13 +56,14 @@
                     </button>
                 </div>
 
-                <!-- Ses Barı -->
-                <div class="audio-bar" id="audioBar">
-                    <span class="audio-label">🎤 Ses Seviyesi</span>
-                    <canvas id="audioVisualizer" width="200" height="4"></canvas>
+                <!-- Mikrofon Gain Slider -->
+                <div class="mic-gain-control">
+                    <span class="gain-label">🎤 Mikrofon Seviyesi</span>
+                    <input type="range" id="micGainSlider" min="0" max="100" value="100" onchange="changeMicGain(this.value)">
+                    <span id="micGainValue" class="gain-value">100</span>
                 </div>
 
-                <!-- Ekran Paylaşımı Container -->
+                <!-- Remote Video Container (Ekran Paylaşımı / Kamera - ANA ALAN) -->
                 <div id="remoteVideoContainer" class="remote-container" style="display: none;">
                     <div class="stream-badge">
                         <span class="live-dot"></span>
@@ -102,9 +103,8 @@
                     </div>
                 </div>
 
-                <!-- Kamera Önizlemeleri -->
-                <video id="localVideoPreview" class="local-preview screen-preview" autoplay muted playsinline style="display: none;"></video>
-                <video id="localCameraPreview" class="local-preview camera-preview" autoplay muted playsinline style="display: none;"></video>
+                <!-- Sadece Kamera Önizlemesi (Küçük Pencere) -->
+                <video id="localCameraPreview" class="local-preview" autoplay muted playsinline style="display: none;"></video>
             </div>
 
             <!-- Chat Bölümü -->
