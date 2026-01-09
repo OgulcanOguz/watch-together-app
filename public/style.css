@@ -1,0 +1,385 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 1400px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.login-screen {
+    padding: 60px 40px;
+    text-align: center;
+}
+
+.login-screen h1 {
+    color: #667eea;
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.login-screen p {
+    color: #666;
+    margin-bottom: 40px;
+    font-size: 1.1em;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group input {
+    width: 100%;
+    max-width: 400px;
+    padding: 15px 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 40px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: transform 0.2s;
+    margin: 10px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.main-screen {
+    display: none;
+    height: 90vh;
+}
+
+.main-screen.active {
+    display: flex;
+}
+
+.video-section {
+    flex: 1;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* WebRTC Kontrolleri */
+.webrtc-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    padding: 12px 20px;
+    background: #f0f0f0;
+    color: #333;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s;
+    flex: 1;
+    min-width: 140px;
+}
+
+.control-btn:hover {
+    background: #e0e0e0;
+    transform: translateY(-2px);
+}
+
+.control-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #667eea;
+}
+
+.sync-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-color: #28a745;
+}
+
+.sync-btn:hover {
+    background: linear-gradient(135deg, #218838 0%, #1ba87e 100%);
+}
+
+/* Uzak Video Container */
+.remote-video-container {
+    position: relative;
+    width: 100%;
+    max-height: 300px;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.remote-video-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.remote-video-container audio {
+    display: none;
+}
+
+.video-controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.video-controls input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.95em;
+}
+
+.video-controls button {
+    padding: 12px 25px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95em;
+}
+
+.video-controls button:hover {
+    background: #5568d3;
+}
+
+.video-player {
+    flex: 1;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.video-player video,
+.video-player #youtubePlayer,
+.video-player #vimeoPlayer {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.video-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 1.1em;
+    text-align: center;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.chat-section {
+    width: 350px;
+    border-left: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    background: #f8f9fa;
+}
+
+.chat-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.chat-header h2 {
+    font-size: 1.3em;
+    margin-bottom: 10px;
+}
+
+.users-list {
+    font-size: 0.9em;
+    opacity: 0.9;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.message {
+    margin-bottom: 15px;
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message.system {
+    text-align: center;
+    color: #999;
+    font-size: 0.85em;
+    font-style: italic;
+    padding: 8px;
+    background: #f0f0f0;
+    border-radius: 8px;
+}
+
+.message.user .username {
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+
+.message.user .text {
+    background: white;
+    padding: 10px 15px;
+    border-radius: 10px;
+    word-wrap: break-word;
+}
+
+.message.user .timestamp {
+    font-size: 0.75em;
+    color: #999;
+    margin-top: 5px;
+}
+
+.chat-input {
+    padding: 20px;
+    border-top: 1px solid #e0e0e0;
+    background: white;
+    display: flex;
+    gap: 10px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.95em;
+}
+
+.chat-input input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.chat-input button {
+    padding: 12px 20px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95em;
+}
+
+.chat-input button:hover {
+    background: #5568d3;
+}
+
+.room-info {
+    background: #fff3cd;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    color: #856404;
+}
+
+@media (max-width: 1024px) {
+    .main-screen {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .chat-section {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid #e0e0e0;
+        height: 400px;
+    }
+
+    .webrtc-controls {
+        flex-direction: column;
+    }
+
+    .control-btn {
+        min-width: 100%;
+    }
+
+    .remote-video-container {
+        max-height: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .container {
+        border-radius: 15px;
+    }
+
+    .login-screen h1 {
+        font-size: 2em;
+    }
+
+    .video-section {
+        padding: 15px;
+    }
+
+    .chat-section {
+        height: 300px;
+    }
+}
