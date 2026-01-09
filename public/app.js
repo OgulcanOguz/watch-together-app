@@ -17,15 +17,18 @@ let isMuted = true;
 let isVideoOn = false;
 let micGainNode = null;
 let audioContext = null;
+let isInitiator = false;
 
-// ICE sunucuları
+// ICE sunucuları - daha fazla STUN server
 const iceServers = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' }
-    ]
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
+    ],
+    iceCandidatePoolSize: 10
 };
 
 // YouTube API yükleme
@@ -56,6 +59,9 @@ async function joinRoom() {
     currentUsername = username;
     currentRoom = roomId;
     socket = io();
+    
+    console.log('🔌 Socket.io bağlanıyor...');
+    
     socket.emit('join-room', { roomId, username });
 
     document.getElementById('loginScreen').style.display = 'none';
@@ -69,20 +75,32 @@ async function joinRoom() {
 
 function setupSocketListeners() {
     socket.on('user-joined', (data) => {
-        addSystemMessage(`${data.username} odaya katıldı 👋`);
+        console.log('👤 Kullanıcı katıldı:', data);
+        addSystemMessage(`${data.username} odaya katıldı 🐱`);
         updateUsersList(data.users);
         
         if (data.videoUrl) {
             loadRemoteVideo(data.videoUrl, data.currentTime, data.isPlaying, data.videoType);
         }
 
-        // İkinci kullanıcı katıldığında WebRTC bağlantısı başlat
-        if (data.users.length === 2 && data.users[0].username === currentUsername) {
-            setTimeout(() => createOffer(), 2000);
+        // İlk kullanıcı = initiator
+        if (data.users.length === 2) {
+            if (data.users[0].username === currentUsername) {
+                isInitiator = true;
+                console.log('🎬 Ben initiator\'üm, 3 saniye sonra offer göndereceğim');
+                setTimeout(() => {
+                    console.log('📤 Offer oluşturuluyor...');
+                    createOffer();
+                }, 3000);
+            } else {
+                isInitiator = false;
+                console.log('👂 Ben receiver\'üm, offer bekliyorum');
+            }
         }
     });
 
     socket.on('user-left', (data) => {
+        console.log('👋 Kullanıcı ayrıldı:', data.username);
         addSystemMessage(`${data.username} odadan ayrıldı`);
         updateUsersList(data.users);
         closeWebRTCConnection();
@@ -150,22 +168,32 @@ function setupSocketListeners() {
     });
 
     // WebRTC sinyal mesajları
-    socket.on('webrtc-offer', async (offer) => {
-        console.log('📥 WebRTC offer alındı');
-        await handleOffer(offer);
+    socket.on('webrtc-offer', async (data) => {
+        console.log('📥 OFFER ALINDI:', data.offer.type);
+        await handleOffer(data.offer);
     });
 
-    socket.on('webrtc-answer', async (answer) => {
-        console.log('📥 WebRTC answer alındı');
-        await handleAnswer(answer);
+    socket.on('webrtc-answer', async (data) => {
+        console.log('📥 ANSWER ALINDI:', data.answer.type);
+        await handleAnswer(data.answer);
     });
 
-    socket.on('webrtc-ice-candidate', async (candidate) => {
-        await handleIceCandidate(candidate);
+    socket.on('webrtc-ice-candidate', async (data) => {
+        console.log('🧊 ICE CANDIDATE ALINDI:', data.candidate.candidate);
+        await handleIceCandidate(data.candidate);
     });
 
     socket.on('sync-request', (data) => {
         showSyncNotification(data.username);
+    });
+
+    // Socket bağlantı durumu
+    socket.on('connect', () => {
+        console.log('✅ Socket.io bağlandı');
+    });
+
+    socket.on('disconnect', () => {
+        console.log('❌ Socket.io bağlantısı koptu');
     });
 }
 
@@ -173,17 +201,20 @@ function setupSocketListeners() {
 
 async function setupWebRTC() {
     try {
+        console.log('🎤 Mikrofon erişimi isteniyor...');
+        
         // Ses akışını al
         localStream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
                 echoCancellation: true,
                 noiseSuppression: true,
-                autoGainControl: false // Manuel gain kullanacağız
+                autoGainControl: false
             }, 
             video: false 
         });
         
         console.log('✅ Mikrofon erişimi sağlandı');
+        console.log('🎵 Audio tracks:', localStream.getAudioTracks().length);
         
         // Audio context ve gain node oluştur
         setupAudioGain();
@@ -208,16 +239,12 @@ function setupAudioGain() {
         const source = audioContext.createMediaStreamSource(localStream);
         micGainNode = audioContext.createGain();
         
-        // Başlangıç gain değeri %100
         micGainNode.gain.value = 1.0;
-        
         source.connect(micGainNode);
         
-        // Yeni stream oluştur gain node'dan
         const destination = audioContext.createMediaStreamDestination();
         micGainNode.connect(destination);
         
-        // Eski audio track'i kaldır, yenisini ekle
         const oldAudioTrack = localStream.getAudioTracks()[0];
         localStream.removeTrack(oldAudioTrack);
         destination.stream.getAudioTracks().forEach(track => {
@@ -226,80 +253,121 @@ function setupAudioGain() {
         
         console.log('✅ Mikrofon gain ayarlandı');
     } catch (err) {
-        console.error('Gain setup hatası:', err);
+        console.error('❌ Gain setup hatası:', err);
     }
 }
 
 function changeMicGain(value) {
-    const gain = value / 100; // 0-100 → 0-1
+    const gain = value / 100;
     if (micGainNode) {
         micGainNode.gain.value = gain;
-        console.log(`🎤 Mikrofon seviyesi: ${value}%`);
+        console.log(`🎚️ Mikrofon seviyesi: ${value}%`);
     }
     document.getElementById('micGainValue').textContent = value;
 }
 
 async function createOffer() {
     try {
-        console.log('📤 WebRTC offer oluşturuluyor...');
+        console.log('═══════════════════════════════');
+        console.log('📤 OFFER OLUŞTURULUYOR...');
+        console.log('═══════════════════════════════');
+        
         peerConnection = new RTCPeerConnection(iceServers);
+        console.log('✅ PeerConnection oluşturuldu');
+        
         setupPeerConnectionListeners();
 
         // Yerel ses akışını ekle
         if (localStream) {
             localStream.getTracks().forEach(track => {
-                console.log('➕ Track ekleniyor:', track.kind, track.id);
+                console.log('➕ LOCAL TRACK EKLENIYOR:');
+                console.log('   - Kind:', track.kind);
+                console.log('   - ID:', track.id);
+                console.log('   - Label:', track.label);
+                console.log('   - Enabled:', track.enabled);
                 peerConnection.addTrack(track, localStream);
             });
         }
 
+        console.log('📋 Offer oluşturuluyor...');
         const offer = await peerConnection.createOffer({
             offerToReceiveAudio: true,
             offerToReceiveVideo: true
         });
+        
+        console.log('📋 Local description ayarlanıyor...');
         await peerConnection.setLocalDescription(offer);
         
+        console.log('✅ Offer hazır, gönderiliyor...');
+        console.log('   - Type:', offer.type);
+        console.log('   - SDP uzunluğu:', offer.sdp.length);
+        
         socket.emit('webrtc-offer', { roomId: currentRoom, offer });
-        console.log('✅ Offer gönderildi');
+        
+        console.log('✅ OFFER GÖNDERİLDİ');
+        console.log('═══════════════════════════════');
         addSystemMessage('📡 Bağlanıyor...');
     } catch (err) {
-        console.error('❌ Offer hatası:', err);
+        console.error('❌ OFFER HATASI:', err);
         addSystemMessage('❌ Bağlantı hatası');
     }
 }
 
 async function handleOffer(offer) {
     try {
-        console.log('📥 Offer işleniyor...');
+        console.log('═══════════════════════════════');
+        console.log('📥 OFFER İŞLENİYOR...');
+        console.log('═══════════════════════════════');
+        
         peerConnection = new RTCPeerConnection(iceServers);
+        console.log('✅ PeerConnection oluşturuldu');
+        
         setupPeerConnectionListeners();
 
         // Yerel ses akışını ekle
         if (localStream) {
             localStream.getTracks().forEach(track => {
-                console.log('➕ Track ekleniyor:', track.kind, track.id);
+                console.log('➕ LOCAL TRACK EKLENIYOR:');
+                console.log('   - Kind:', track.kind);
+                console.log('   - ID:', track.id);
+                console.log('   - Label:', track.label);
                 peerConnection.addTrack(track, localStream);
             });
         }
 
+        console.log('📋 Remote description ayarlanıyor...');
         await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        
+        console.log('📋 Answer oluşturuluyor...');
         const answer = await peerConnection.createAnswer();
+        
+        console.log('📋 Local description ayarlanıyor...');
         await peerConnection.setLocalDescription(answer);
         
+        console.log('✅ Answer hazır, gönderiliyor...');
         socket.emit('webrtc-answer', { roomId: currentRoom, answer });
-        console.log('✅ Answer gönderildi');
+        
+        console.log('✅ ANSWER GÖNDERİLDİ');
+        console.log('═══════════════════════════════');
     } catch (err) {
-        console.error('❌ Offer işleme hatası:', err);
+        console.error('❌ OFFER İŞLEME HATASI:', err);
     }
 }
 
 async function handleAnswer(answer) {
     try {
+        console.log('═══════════════════════════════');
+        console.log('📥 ANSWER İŞLENİYOR...');
+        console.log('═══════════════════════════════');
+        
+        console.log('📋 Remote description ayarlanıyor...');
         await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        console.log('✅ Bağlantı kuruldu!');
+        
+        console.log('✅ ANSWER İŞLENDİ - BAĞLANTI KURULDU!');
+        console.log('═══════════════════════════════');
         addSystemMessage('✅ Bağlantı aktif');
     } catch (err) {
-        console.error('❌ Answer hatası:', err);
+        console.error('❌ ANSWER İŞLEME HATASI:', err);
     }
 }
 
@@ -308,82 +376,131 @@ async function handleIceCandidate(candidate) {
         if (peerConnection && peerConnection.remoteDescription) {
             await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
             console.log('✅ ICE candidate eklendi');
+        } else {
+            console.warn('⚠️ Remote description yok, ICE candidate bekletiliyor');
         }
     } catch (err) {
-        console.error('❌ ICE candidate hatası:', err);
+        console.error('❌ ICE CANDIDATE HATASI:', err);
     }
 }
 
 function setupPeerConnectionListeners() {
+    // ICE candidate
     peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
+            console.log('🧊 YENİ ICE CANDIDATE:', event.candidate.candidate.substring(0, 50) + '...');
             socket.emit('webrtc-ice-candidate', { 
                 roomId: currentRoom, 
                 candidate: event.candidate 
             });
-            console.log('📤 ICE candidate gönderildi');
+        } else {
+            console.log('🧊 ICE gathering tamamlandı');
         }
     };
 
+    // ICE gathering state
+    peerConnection.onicegatheringstatechange = () => {
+        console.log('🧊 ICE gathering state:', peerConnection.iceGatheringState);
+    };
+
+    // Track geldiğinde
     peerConnection.ontrack = (event) => {
-        console.log('📥 Uzak track alındı:', event.track.kind, event.track.id);
+        console.log('═══════════════════════════════');
+        console.log('📥 UZAK TRACK ALINDI!');
+        console.log('   - Kind:', event.track.kind);
+        console.log('   - ID:', event.track.id);
+        console.log('   - Label:', event.track.label);
+        console.log('   - ReadyState:', event.track.readyState);
+        console.log('   - Enabled:', event.track.enabled);
+        console.log('═══════════════════════════════');
         
         if (!remoteStream) {
             remoteStream = new MediaStream();
+            console.log('✅ Yeni remote stream oluşturuldu');
         }
         
-        // Track'i ekle
         remoteStream.addTrack(event.track);
+        console.log('✅ Track remote stream\'e eklendi');
         
         if (event.track.kind === 'audio') {
-            // Ses için remote audio element
+            console.log('🔊 SES TRACK\'İ İŞLENİYOR...');
             const remoteAudio = document.getElementById('remoteAudio');
             remoteAudio.srcObject = remoteStream;
-            remoteAudio.play().catch(e => console.log('Audio autoplay:', e));
-            console.log('✅ Uzak ses bağlandı');
+            remoteAudio.play().then(() => {
+                console.log('✅ Remote audio çalıyor');
+            }).catch(e => {
+                console.error('❌ Audio autoplay hatası:', e);
+            });
             addSystemMessage('🔊 Ses aktif');
         } else if (event.track.kind === 'video') {
-            // Video için ana player'a yerleştir
+            console.log('📺 VİDEO TRACK\'İ İŞLENİYOR...');
             showRemoteVideo(remoteStream);
-            console.log('✅ Uzak video bağlandı');
+            console.log('✅ Remote video gösteriliyor');
             addSystemMessage('📺 Ekran paylaşımı aktif');
         }
     };
 
+    // Connection state
     peerConnection.onconnectionstatechange = () => {
         const state = peerConnection.connectionState;
-        console.log('🔄 Bağlantı:', state);
+        console.log('🔄 CONNECTION STATE:', state);
         
         if (state === 'connected') {
+            console.log('✅ PEER CONNECTION BAŞARILI!');
             addSystemMessage('✅ WebRTC bağlandı');
         } else if (state === 'disconnected') {
+            console.log('⚠️ BAĞLANTI KOPTU');
             addSystemMessage('⚠️ Bağlantı koptu');
         } else if (state === 'failed') {
+            console.log('❌ BAĞLANTI BAŞARISIZ');
             addSystemMessage('❌ Bağlantı başarısız');
             closeWebRTCConnection();
         }
     };
 
+    // ICE connection state
     peerConnection.oniceconnectionstatechange = () => {
-        console.log('🧊 ICE:', peerConnection.iceConnectionState);
+        console.log('🧊 ICE CONNECTION STATE:', peerConnection.iceConnectionState);
+        
+        if (peerConnection.iceConnectionState === 'connected') {
+            console.log('✅ ICE BAĞLANTISI BAŞARILI!');
+        } else if (peerConnection.iceConnectionState === 'failed') {
+            console.log('❌ ICE BAĞLANTISI BAŞARISIZ!');
+        }
+    };
+
+    // Signaling state
+    peerConnection.onsignalingstatechange = () => {
+        console.log('📡 SIGNALING STATE:', peerConnection.signalingState);
     };
 }
 
 function showRemoteVideo(stream) {
+    console.log('📺 showRemoteVideo çağrıldı');
+    
     // Video player'ı gizle
     document.getElementById('videoPlayerSection').style.display = 'none';
+    console.log('   - Video player gizlendi');
     
-    // Remote video container'ı göster ve ANA ALANA YERLEŞTIR
+    // Remote video container'ı göster
     const remoteContainer = document.getElementById('remoteVideoContainer');
     remoteContainer.style.display = 'flex';
+    console.log('   - Remote container gösterildi');
     
     // Remote video'yu ayarla
     const remoteVideo = document.getElementById('remoteVideo');
     remoteVideo.srcObject = stream;
-    remoteVideo.play().catch(e => console.log('Video autoplay:', e));
+    console.log('   - Stream remote video\'ya bağlandı');
+    
+    remoteVideo.play().then(() => {
+        console.log('✅ Remote video çalıyor!');
+    }).catch(e => {
+        console.error('❌ Video play hatası:', e);
+    });
 }
 
 function hideRemoteVideo() {
+    console.log('📺 hideRemoteVideo çağrıldı');
     document.getElementById('remoteVideoContainer').style.display = 'none';
     document.getElementById('videoPlayerSection').style.display = 'flex';
     
@@ -401,10 +518,13 @@ async function toggleScreenShare() {
 
 async function startScreenShare() {
     try {
+        console.log('═══════════════════════════════');
+        console.log('📺 EKRAN PAYLAŞIMI BAŞLATILIYOR...');
+        console.log('═══════════════════════════════');
+        
         screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: { 
                 cursor: "always",
-                displaySurface: "monitor",
                 width: { ideal: 1920 },
                 height: { ideal: 1080 },
                 frameRate: { ideal: 30 }
@@ -412,54 +532,80 @@ async function startScreenShare() {
             audio: true
         });
 
-        console.log('✅ Ekran paylaşımı başladı');
+        console.log('✅ Ekran yakalandı');
+        console.log('📹 Video tracks:', screenStream.getVideoTracks().length);
+        console.log('🔊 Audio tracks:', screenStream.getAudioTracks().length);
 
-        // Video track'i peer connection'a ekle
         const videoTrack = screenStream.getVideoTracks()[0];
+        console.log('📹 Video track detayları:');
+        console.log('   - ID:', videoTrack.id);
+        console.log('   - Label:', videoTrack.label);
+        console.log('   - ReadyState:', videoTrack.readyState);
+        console.log('   - Enabled:', videoTrack.enabled);
         
         if (peerConnection) {
+            console.log('🔄 Video track peer connection\'a ekleniyor...');
+            
             const senders = peerConnection.getSenders();
             const videoSender = senders.find(s => s.track && s.track.kind === 'video');
             
             if (videoSender) {
-                console.log('🔄 Video track değiştiriliyor...');
+                console.log('🔄 Mevcut video track değiştiriliyor...');
                 await videoSender.replaceTrack(videoTrack);
+                console.log('✅ Video track değiştirildi');
             } else {
                 console.log('➕ Yeni video track ekleniyor...');
-                peerConnection.addTrack(videoTrack, screenStream);
+                const sender = peerConnection.addTrack(videoTrack, screenStream);
+                console.log('✅ Video track eklendi, sender:', sender);
             }
 
             // Sistem sesini de ekle
             const audioTracks = screenStream.getAudioTracks();
             if (audioTracks.length > 0) {
+                console.log('🔊 Sistem sesi ekleniyor...');
                 const audioSender = senders.find(s => s.track && s.track.kind === 'audio' && s.track.label.includes('system'));
                 if (!audioSender) {
                     peerConnection.addTrack(audioTracks[0], screenStream);
                     console.log('✅ Sistem sesi eklendi');
                 }
             }
+            
+            // ICE gathering'i yeniden başlat
+            console.log('🧊 ICE gathering yeniden başlatılıyor...');
+        } else {
+            console.warn('⚠️ PeerConnection yok!');
         }
 
-        // Kendi ekranını da göster (ANA ALANDA)
+        // Kendi ekranını da göster
         showRemoteVideo(screenStream);
+        console.log('✅ Kendi ekranın gösteriliyor');
 
         // Paylaşım durdurulduğunda
         videoTrack.onended = () => {
+            console.log('📺 Ekran paylaşımı kullanıcı tarafından durduruldu');
             stopScreenShare();
         };
 
         isScreenSharing = true;
         updateScreenShareButton();
         addSystemMessage('📺 Ekran paylaşımınız başladı');
+        
+        console.log('✅ EKRAN PAYLAŞIMI BAŞLATILDI');
+        console.log('═══════════════════════════════');
     } catch (err) {
-        console.error('❌ Ekran paylaşımı hatası:', err);
+        console.error('❌ EKRAN PAYLAŞIMI HATASI:', err);
         addSystemMessage('⚠️ Ekran paylaşımı iptal edildi');
     }
 }
 
 function stopScreenShare() {
+    console.log('📺 EKRAN PAYLAŞIMI DURDURULUYOR...');
+    
     if (screenStream) {
-        screenStream.getTracks().forEach(track => track.stop());
+        screenStream.getTracks().forEach(track => {
+            track.stop();
+            console.log('⏹️ Track durduruldu:', track.kind);
+        });
         screenStream = null;
     }
 
@@ -469,6 +615,7 @@ function stopScreenShare() {
         senders.forEach(sender => {
             if (sender.track && sender.track.kind === 'video') {
                 sender.replaceTrack(null);
+                console.log('🔄 Video track kaldırıldı');
             }
         });
     }
@@ -477,6 +624,8 @@ function stopScreenShare() {
     updateScreenShareButton();
     hideRemoteVideo();
     addSystemMessage('📺 Ekran paylaşımı durduruldu');
+    
+    console.log('✅ EKRAN PAYLAŞIMI DURDURULDU');
 }
 
 function toggleMicrophone() {
@@ -496,7 +645,6 @@ function toggleMicrophone() {
 
 async function toggleCamera() {
     if (isVideoOn) {
-        // Kamerayı kapat
         if (localStream) {
             const videoTracks = localStream.getVideoTracks();
             videoTracks.forEach(track => {
@@ -505,7 +653,6 @@ async function toggleCamera() {
             });
         }
         
-        // Local preview'u gizle
         const localPreview = document.getElementById('localCameraPreview');
         localPreview.srcObject = null;
         localPreview.style.display = 'none';
@@ -514,7 +661,6 @@ async function toggleCamera() {
         updateCameraButton();
         addSystemMessage('📷 Kamera kapatıldı');
     } else {
-        // Kamerayı aç
         try {
             const videoStream = await navigator.mediaDevices.getUserMedia({ 
                 video: {
@@ -530,12 +676,10 @@ async function toggleCamera() {
                 localStream = videoStream;
             }
 
-            // Local preview göster
             const localPreview = document.getElementById('localCameraPreview');
             localPreview.srcObject = new MediaStream([videoTrack]);
             localPreview.style.display = 'block';
 
-            // Peer connection'a ekle
             if (peerConnection) {
                 const senders = peerConnection.getSenders();
                 const videoSender = senders.find(s => s.track && s.track.kind === 'video');
@@ -551,16 +695,19 @@ async function toggleCamera() {
             updateCameraButton();
             addSystemMessage('📷 Kamera açıldı');
         } catch (err) {
-            console.error('Kamera hatası:', err);
+            console.error('❌ Kamera hatası:', err);
             addSystemMessage('⚠️ Kamera açılamadı');
         }
     }
 }
 
 function closeWebRTCConnection() {
+    console.log('🔌 WebRTC bağlantısı kapatılıyor...');
+    
     if (peerConnection) {
         peerConnection.close();
         peerConnection = null;
+        console.log('✅ PeerConnection kapatıldı');
     }
     if (screenStream) {
         screenStream.getTracks().forEach(track => track.stop());
@@ -646,11 +793,7 @@ function startCountdown() {
         } else {
             addSystemMessage('▶️ BAŞLIYOR!');
             clearInterval(interval);
-            
-            // Videoyu başlat
-            setTimeout(() => {
-                playVideo();
-            }, 100);
+            setTimeout(() => playVideo(), 100);
         }
     }, 1000);
 }
@@ -762,7 +905,6 @@ function loadVideo() {
 
     clearCurrentVideo();
     
-    // Ekran paylaşımını durdur, video player'ı göster
     if (isScreenSharing) {
         stopScreenShare();
     }
